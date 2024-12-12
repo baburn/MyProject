@@ -1,8 +1,8 @@
 volumes:
   orderer.cred.com:
   peer0.university.cred.com:
-  peer0.company.cred.com:
   peer0.student.cred.com:
+  peer0.company.cred.com:
 
 
 networks:
@@ -89,11 +89,11 @@ services:
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.university.cred.com:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.university.cred.com:7051
-      - CORE_PEER_LOCALMSPID=ManufacturerMSP
+      - CORE_PEER_LOCALMSPID=UniversityMSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_OPERATIONS_LISTENADDRESS=peer0.university.cred.com:9444
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0manufacturer"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0university"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
@@ -126,8 +126,8 @@ services:
     networks:
       - credverification
 
-  peer0.company.cred.com:
-    container_name: peer0.company.cred.com
+  peer0.student.cred.com:
+    container_name: peer0.student.cred.com
     image: hyperledger/fabric-peer:2.5.4
     labels:
       service: hyperledger-fabric
@@ -142,18 +142,18 @@ services:
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
       # Peer specific variables
-      - CORE_PEER_ID=peer0.company.cred.com
-      - CORE_PEER_ADDRESS=peer0.company.cred.com:9051
+      - CORE_PEER_ID=peer0.student.cred.com
+      - CORE_PEER_ADDRESS=peer0.student.cred.com:9051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.company.cred.com:9052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.student.cred.com:9052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.company.cred.com:9051
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.company.cred.com:9051
-      - CORE_PEER_LOCALMSPID=DealerMSP
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.student.cred.com:9051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.student.cred.com:9051
+      - CORE_PEER_LOCALMSPID=StudentMSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.company.cred.com:9445
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.student.cred.com:9445
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0dealer"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0student"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
@@ -161,8 +161,8 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ../organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com:/etc/hyperledger/fabric
-      - peer0.company.cred.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/student.cred.com/peers/peer0.student.cred.com:/etc/hyperledger/fabric
+      - peer0.student.cred.com:/var/hyperledger/production
     working_dir: /root
     command: peer node start
     ports:
@@ -186,8 +186,8 @@ services:
     networks:
       - credverification
 
-  peer0.student.cred.com:
-    container_name: peer0.student.cred.com
+  peer0.company.cred.com:
+    container_name: peer0.company.cred.com
     image: hyperledger/fabric-peer:2.5.4
     labels:
       service: hyperledger-fabric
@@ -204,18 +204,18 @@ services:
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
       # Peer specific variables
-      - CORE_PEER_ID=peer0.student.cred.com
-      - CORE_PEER_ADDRESS=peer0.student.cred.com:11051
+      - CORE_PEER_ID=peer0.company.cred.com
+      - CORE_PEER_ADDRESS=peer0.company.cred.com:11051
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_PEER_LISTENADDRESS=0.0.0.0:11051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.student.cred.com:11052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.company.cred.com:11052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:11052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.student.cred.com:11051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.student.cred.com:11051
-      - CORE_PEER_LOCALMSPID=MvdMSP
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.student.cred.com:9446
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.company.cred.com:11051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.company.cred.com:11051
+      - CORE_PEER_LOCALMSPID=CompanyMSP
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.company.cred.com:9446
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0mvd"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0company"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s  
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
@@ -225,8 +225,8 @@ services:
       - couchdb2    
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock      
-      - ../organizations/peerOrganizations/student.cred.com/peers/peer0.student.cred.com:/etc/hyperledger/fabric        
-      - peer0.student.cred.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com:/etc/hyperledger/fabric        
+      - peer0.company.cred.com:/var/hyperledger/production
     working_dir: /root
     command: peer node start
     ports:

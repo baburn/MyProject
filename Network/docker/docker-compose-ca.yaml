@@ -24,26 +24,6 @@ services:
     networks:
       - credverification
 
-  ca_company:
-    image: hyperledger/fabric-ca:1.5.7
-    labels:
-      service: hyperledger-fabric
-    environment:
-      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=ca-company
-      - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=8054
-      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
-    ports:
-      - "8054:8054"
-      - "18054:18054"
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
-    volumes:
-      - ../organizations/fabric-ca/company:/etc/hyperledger/fabric-ca-server
-    container_name: ca_company
-    networks:
-      - credverification
-
   ca_student:
     image: hyperledger/fabric-ca:1.5.7
     labels:
@@ -52,6 +32,26 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca-student
       - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=8054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
+    ports:
+      - "8054:8054"
+      - "18054:18054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/student:/etc/hyperledger/fabric-ca-server
+    container_name: ca_student
+    networks:
+      - credverification
+
+  ca_company:
+    image: hyperledger/fabric-ca:1.5.7
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-company
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
       - FABRIC_CA_SERVER_PORT=11054
       - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:11055
     ports:
@@ -59,8 +59,8 @@ services:
       - "11055:11055"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ../organizations/fabric-ca/student:/etc/hyperledger/fabric-ca-server
-    container_name: ca_student
+      - ../organizations/fabric-ca/company:/etc/hyperledger/fabric-ca-server
+    container_name: ca_company
     networks:
       - credverification
       
