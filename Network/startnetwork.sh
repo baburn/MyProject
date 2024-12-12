@@ -23,7 +23,7 @@ echo "-------------Generate the genesis block—-------------------------------"
 
 export FABRIC_CFG_PATH=${PWD}/config
 
-export CHANNEL_NAME=verificationchannel
+export CHANNEL_NAME=mychannel
 
 configtxgen -profile ThreeOrgsChannel -outputBlock ${PWD}/channel-artifacts/${CHANNEL_NAME}.block -channelID $CHANNEL_NAME
 sleep 2
@@ -43,17 +43,17 @@ osnadmin channel list -o localhost:7053 --ca-file $ORDERER_CA --client-cert $ORD
 sleep 2
 
 export FABRIC_CFG_PATH=${PWD}/peercfg
-export CORE_PEER_LOCALMSPID=InstitutionMSP
+export CORE_PEER_LOCALMSPID=UniversityMSP
 export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/university.cred.com/peers/peer0.university.cred.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/university.cred.com/users/Admin@university.cred.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
-export INSTITUTION_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/university.cred.com/peers/peer0.university.cred.com/tls/ca.crt
+export UNIVERSITY_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/university.cred.com/peers/peer0.university.cred.com/tls/ca.crt
 export STUDENT_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/student.cred.com/peers/peer0.student.cred.com/tls/ca.crt
-export EMPLOYER_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com/tls/ca.crt
+export COMPANY_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com/tls/ca.crt
 sleep 2
 
-echo "—---------------Join University peer to the channel—-------------"
+echo "—---------------Join Institution peer to the channel—-------------"
 
 echo "-----------------------------------------------------------------------------------------------------------------------------------------------------------"
 echo ${FABRIC_CFG_PATH}
@@ -67,7 +67,7 @@ sleep 3
 echo "-----channel List----"
 peer channel list
 
-echo "—-------------University anchor peer update—-----------"
+echo "—-------------Institution anchor peer update—-----------"
 
 peer channel fetch config ${PWD}/channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com -c $CHANNEL_NAME --tls --cafile $ORDERER_CA
 sleep 1
@@ -79,7 +79,7 @@ jq '.data.data[0].payload.data.config' config_block.json > config.json
 
 cp config.json config_copy.json
 
-jq '.channel_group.groups.Application.groups.InstitutionMSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.university.cred.com","port": 7051}]},"version": "0"}}' config_copy.json > modified_config.json
+jq '.channel_group.groups.Application.groups.UniversityMSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.university.cred.com","port": 7051}]},"version": "0"}}' config_copy.json > modified_config.json
 
 configtxlator proto_encode --input config.json --type common.Config --output config.pb
 configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
@@ -101,22 +101,22 @@ sleep 1
 
 echo "—---------------package chaincode—-------------"
 
-peer lifecycle Chaincode package credverification.tar.gz --path ${PWD}/../Chaincode/ --lang golang --label credverification_1.0
+peer lifecycle chaincode package credentialcred.tar.gz --path ${PWD}/../chaincode/ --lang golang --label credentialcred_1.0
 sleep 1
 
-echo "—---------------install Chaincode in University peer—-------------"
+echo "—---------------install chaincode in Institution peer—-------------"
 
-peer lifecycle Chaincode install credverification.tar.gz
+peer lifecycle chaincode install credentialcred.tar.gz
 sleep 3
 
-peer lifecycle Chaincode queryinstalled
+peer lifecycle chaincode queryinstalled
 sleep 1
 
-export CC_PACKAGE_ID=$(peer lifecycle Chaincode calculatepackageid credverification.tar.gz)
+export CC_PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid credentialcred.tar.gz)
 
-echo "—---------------Approve Chaincode in University peer—-------------"
+echo "—---------------Approve chaincode in Institution peer—-------------"
 
-peer lifecycle Chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../Chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 2
 
 
@@ -124,8 +124,8 @@ sleep 2
 
 export CORE_PEER_LOCALMSPID=StudentMSP 
 export CORE_PEER_ADDRESS=localhost:9051 
-export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/Network/organizations/peerOrganizations/student.cred.com/peers/peer0.student.cred.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=${PWD}/Network/organizations/peerOrganizations/student.cred.com/users/Admin@student.cred.com/msp
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/student.cred.com/peers/peer0.student.cred.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/student.cred.com/users/Admin@student.cred.com/msp
 
 echo "—---------------Join Student peer to the channel—-------------"
 
@@ -160,22 +160,22 @@ peer channel update -f ${PWD}/channel-artifacts/config_update_in_envelope.pb -c 
 sleep 1
 
 
-echo "—---------------install Chaincode in Student peer—-------------"
+echo "—---------------install chaincode in Student peer—-------------"
 
-peer lifecycle Chaincode install credverification.tar.gz
+peer lifecycle chaincode install credentialcred.tar.gz
 sleep 3
 
-peer lifecycle Chaincode queryinstalled
+peer lifecycle chaincode queryinstalled
 
-echo "—---------------Approve Chaincode in Student peer—-------------"
+echo "—---------------Approve chaincode in Student peer—-------------"
 
-peer lifecycle Chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../Chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 1
 
-export CORE_PEER_LOCALMSPID=EmployerMSP 
+export CORE_PEER_LOCALMSPID=CompanyMSP 
 export CORE_PEER_ADDRESS=localhost:11051 
-export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/Network/organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=${PWD}/Network/organizations/peerOrganizations/company.cred.com/users/Admin@company.cred.com/msp
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/company.cred.com/users/Admin@company.cred.com/msp
 
 echo "—---------------Join company peer to the channel—-------------"
 
@@ -196,7 +196,7 @@ configtxlator proto_decode --input config_block.pb --type common.Block --output 
 jq '.data.data[0].payload.data.config' config_block.json > config.json
 cp config.json config_copy.json
 
-jq '.channel_group.groups.Application.groups.EmployerMSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.company.cred.com","port": 11051}]},"version": "0"}}' config_copy.json > modified_config.json
+jq '.channel_group.groups.Application.groups.CompanyMSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.company.cred.com","port": 11051}]},"version": "0"}}' config_copy.json > modified_config.json
 
 configtxlator proto_encode --input config.json --type common.Config --output config.pb
 configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
@@ -213,26 +213,26 @@ sleep 1
 
 peer channel getinfo -c $CHANNEL_NAME
 
-echo "—---------------install Chaincode in Company peer—-------------"
+echo "—---------------install chaincode in Company peer—-------------"
 
-peer lifecycle Chaincode install credverification.tar.gz
+peer lifecycle chaincode install credentialcred.tar.gz
 sleep 3
 
-peer lifecycle Chaincode queryinstalled
+peer lifecycle chaincode queryinstalled
 
-echo "—---------------Approve Chaincode in Company peer—-------------"
+echo "—---------------Approve chaincode in Company peer—-------------"
 
-peer lifecycle Chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../Chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 1
 
-echo "—---------------Commit Chaincode in Company peer—-------------"
+echo "—---------------Commit chaincode in Company peer—-------------"
 
-peer lifecycle Chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../Chaincode/collection-config.json --tls --cafile $ORDERER_CA --output json
+peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-credcreds.json --tls --cafile $ORDERER_CA --output json
 
-peer lifecycle Chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../Chaincode/collection-config.json --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $INSTITUTION_PEER_TLSROOTCERT --peerAddresses localhost:9051 --tlsRootCertFiles $STUDENT_PEER_TLSROOTCERT --peerAddresses localhost:11051 --tlsRootCertFiles $EMPLOYER_PEER_TLSROOTCERT
+peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-credcreds.json --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $UNIVERSITY_PEER_TLSROOTCERT --peerAddresses localhost:9051 --tlsRootCertFiles $STUDENT_PEER_TLSROOTCERT --peerAddresses localhost:11051 --tlsRootCertFiles $COMPANY_PEER_TLSROOTCERT
 sleep 1
 
-peer lifecycle Chaincode querycommitted --channelID $CHANNEL_NAME --name Credential-Verification --cafile $ORDERER_CA
+peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name Credential-Verification --cafile $ORDERER_CA
 
 
 echo "-----------------------------------------------------------------------------------------------------------------------------------------------------------"
