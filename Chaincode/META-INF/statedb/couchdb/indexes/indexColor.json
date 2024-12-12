@@ -1,0 +1,10 @@
+{
+    "index": {
+        "fields": [
+            "percentage"
+        ]
+    },
+    "ddoc": "indexPercentageDoc",
+    "name": "indexPercentage",
+    "type": "json"
+}

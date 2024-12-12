@@ -9,18 +9,18 @@ import (
 )
 
 func main() {
-	UniContract := new(contracts.UniContract)
-	//OfferContract := new(contracts.OfferContract)
+	// UniContract := new(contracts.UniContract)
+	// OfferContract := new(contracts.OfferContract)
 
-	chaincode, err := contractapi.NewChaincode(UniContract)
+	// chaincode, err := contractapi.NewChaincode(UniContract)
 
-	if err != nil {
-		log.Panicf("Could not create chaincode : %v", err)
-	}
+	// if err != nil {
+	// 	log.Panicf("Could not create chaincode : %v", err)
+	// }
 
-	err = chaincode.Start()
+	// err = chaincode.Start()
 
-	if err != nil {
-		log.Panicf("Failed to start chaincode : %v", err)
-	}
+	// if err != nil {
+	// 	log.Panicf("Failed to start chaincode : %v", err)
+	// }
 }

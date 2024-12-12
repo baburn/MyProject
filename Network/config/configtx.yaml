@@ -144,8 +144,8 @@ Profiles:
         Consenters:
           - Host: orderer.cred.com
             Port: 7050
-            ClientTLSCert: ../organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
-            SercompanyTLSCert: ../organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
+            ClientTLSCert: ../Network/organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
+            ServerTLSCert: ../Network/organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
       Organizations:
         - *OrdererOrg
       Capabilities: *OrdererCapabilities

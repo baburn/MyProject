@@ -1,16 +1,16 @@
 networks:
-  automobile:
-    name: fabric_automobile
+  credverification:
+    name: fabric_credverification
 
 services:
 
-  ca_manufacturer:
+  ca_university:
     image: hyperledger/fabric-ca:1.5.7
     labels:
       service: hyperledger-fabric
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=ca-manufacturer
+      - FABRIC_CA_SERVER_CA_NAME=ca-university
       - FABRIC_CA_SERVER_TLS_ENABLED=true
       - FABRIC_CA_SERVER_PORT=7054
       - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
@@ -19,18 +19,18 @@ services:
       - "17054:17054"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ../organizations/fabric-ca/manufacturer:/etc/hyperledger/fabric-ca-server
-    container_name: ca_manufacturer
+      - ../organizations/fabric-ca/university:/etc/hyperledger/fabric-ca-server
+    container_name: ca_university
     networks:
-      - automobile
+      - credverification
 
-  ca_dealer:
+  ca_company:
     image: hyperledger/fabric-ca:1.5.7
     labels:
       service: hyperledger-fabric
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=ca-dealer
+      - FABRIC_CA_SERVER_CA_NAME=ca-company
       - FABRIC_CA_SERVER_TLS_ENABLED=true
       - FABRIC_CA_SERVER_PORT=8054
       - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
@@ -39,18 +39,18 @@ services:
       - "18054:18054"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ../organizations/fabric-ca/dealer:/etc/hyperledger/fabric-ca-server
-    container_name: ca_dealer
+      - ../organizations/fabric-ca/company:/etc/hyperledger/fabric-ca-server
+    container_name: ca_company
     networks:
-      - automobile
+      - credverification
 
-  ca_mvd:
+  ca_student:
     image: hyperledger/fabric-ca:1.5.7
     labels:
       service: hyperledger-fabric
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=ca-mvd
+      - FABRIC_CA_SERVER_CA_NAME=ca-student
       - FABRIC_CA_SERVER_TLS_ENABLED=true
       - FABRIC_CA_SERVER_PORT=11054
       - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:11055
@@ -59,10 +59,10 @@ services:
       - "11055:11055"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ../organizations/fabric-ca/mvd:/etc/hyperledger/fabric-ca-server
-    container_name: ca_mvd
+      - ../organizations/fabric-ca/student:/etc/hyperledger/fabric-ca-server
+    container_name: ca_student
     networks:
-      - automobile
+      - credverification
       
   ca_orderer:
     image: hyperledger/fabric-ca:1.5.7
@@ -82,4 +82,4 @@ services:
       - ../organizations/fabric-ca/ordererOrg:/etc/hyperledger/fabric-ca-server
     container_name: ca_orderer
     networks:
-      - automobile
+      - credverification
