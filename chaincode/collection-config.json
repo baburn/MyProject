@@ -1,7 +1,7 @@
 [
   {
-      "name": "OfferCollection",
-      "policy": "OR('StudentMSP.member', 'EmployerMSP.member')",
+      "name": "Offers",
+      "policy": "OR('StudentMSP.member', 'CompanyMSP.member')",
       "requiredPeerCount": 1,
       "maxPeerCount": 1,
       "blockToLive": 100,

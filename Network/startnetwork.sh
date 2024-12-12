@@ -116,7 +116,7 @@ export CC_PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid credentialcre
 
 echo "—---------------Approve chaincode in Institution peer—-------------"
 
-peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 2
 
 
@@ -169,7 +169,7 @@ peer lifecycle chaincode queryinstalled
 
 echo "—---------------Approve chaincode in Student peer—-------------"
 
-peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 1
 
 export CORE_PEER_LOCALMSPID=CompanyMSP 
@@ -222,14 +222,14 @@ peer lifecycle chaincode queryinstalled
 
 echo "—---------------Approve chaincode in Company peer—-------------"
 
-peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-credcreds.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 1
 
 echo "—---------------Commit chaincode in Company peer—-------------"
 
-peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-credcreds.json --tls --cafile $ORDERER_CA --output json
+peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-config.json --tls --cafile $ORDERER_CA --output json
 
-peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-credcreds.json --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $UNIVERSITY_PEER_TLSROOTCERT --peerAddresses localhost:9051 --tlsRootCertFiles $STUDENT_PEER_TLSROOTCERT --peerAddresses localhost:11051 --tlsRootCertFiles $COMPANY_PEER_TLSROOTCERT
+peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --sequence 1 --collections-config ../chaincode/collection-config.json --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $UNIVERSITY_PEER_TLSROOTCERT --peerAddresses localhost:9051 --tlsRootCertFiles $STUDENT_PEER_TLSROOTCERT --peerAddresses localhost:11051 --tlsRootCertFiles $COMPANY_PEER_TLSROOTCERT
 sleep 1
 
 peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name Credential-Verification --cafile $ORDERER_CA
