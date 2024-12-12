@@ -1,0 +1,158 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/cred.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.cred.com:7050
+  - &University
+    Name: UniversityMSP
+    ID: UniversityMSP
+    MSPDir: ../organizations/peerOrganizations/university.cred.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('UniversityMSP.admin', 'UniversityMSP.peer', 'UniversityMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('UniversityMSP.admin', 'UniversityMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('UniversityMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('UniversityMSP.peer')"
+  - &Student
+    Name: StudentMSP
+    ID: StudentMSP
+    MSPDir: ../organizations/peerOrganizations/student.cred.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('StudentMSP.admin', 'StudentMSP.peer', 'StudentMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('StudentMSP.admin', 'StudentMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('StudentMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('StudentMSP.peer')"
+
+  - &Company
+    Name: CompanyMSP
+    ID: CompanyMSP
+    MSPDir: ../organizations/peerOrganizations/company.cred.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CompanyMSP.admin', 'CompanyMSP.peer', 'CompanyMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CompanyMSP.admin', 'CompanyMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CompanyMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CompanyMSP.peer')"
+
+Capabilities:  
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+    
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  Addresses:
+    - orderer.cred.com:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  ThreeOrgsChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      OrdererType: etcdraft
+      EtcdRaft:
+        Consenters:
+          - Host: orderer.cred.com
+            Port: 7050
+            ClientTLSCert: ../organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
+            SercompanyTLSCert: ../organizations/ordererOrganizations/cred.com/orderers/orderer.cred.com/tls/server.crt
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *University
+        - *Student
+        - *Company
+      Capabilities: *ApplicationCapabilities
