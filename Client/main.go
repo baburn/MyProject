@@ -5,18 +5,21 @@ import "fmt"
 func main(){
 	result := submitTxnFn(
 		"university",
-		"autochannel",
-		"Project",
-		"UniContract",
+		"mychannel",
+		"Credential-Verification",
+		"ResultContract",
 		"invoke",
 		make(map[string][]byte),
-		"CreateStudent",
-		"Car-06",
-		"Maruti",
-		"Alto",
-		"Red",
-		"fac01",
-		"25/10/2023",
+		"CreateResult",
+		"Res1",
+		"Final",
+		"Student1",
+		"1",
+		"100",
+		"90",
+		"90%",
+		"A",
+		"Pass",
 	)
 
 	// privateData := map[string][]byte{

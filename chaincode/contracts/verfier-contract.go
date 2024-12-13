@@ -17,18 +17,15 @@ type Offer struct {
 	OfferId        string `json:"offerId"`
 	AssetType      string `json:"assetType"`
 	Ctc            string `json:"ctc"`
-	FixedComp      string `json:"fixedComp"`
-	VariableComp   string `json:"variableComp"`
 	DateOfJoining  string `json:"dateOfJoining"`
 	DateOfRelease  string `json:"dateOfRelease"`
-	NameOfPerson   string `json:"nameOfPerson"`
-	ContactDetails string `json:"contactDetails"`
+	Name   string `json:"name"`
+	Email  string   `json:"email"`
 	CompanyName    string `json:"companyName"`
 }
 
-const collectionName string = "OfferCollection"
+const collectionName string = "Offers"
 
-// OfferExists returns true when asset with given ID exists in private data collection
 func (o *OfferContract) OfferExists(ctx contractapi.TransactionContextInterface, offerId string) (bool, error) {
 
 	data, err := ctx.GetStub().GetPrivateDataHash(collectionName, offerId)
@@ -40,15 +37,14 @@ func (o *OfferContract) OfferExists(ctx contractapi.TransactionContextInterface,
 	return data != nil, nil
 }
 
-// CreateOfferLetter creates a new instance of Offer
-func (o *OfferContract) CreateOfferLetter(ctx contractapi.TransactionContextInterface, offerId string) (string, error) {
+func (o *OfferContract) CreateOffer(ctx contractapi.TransactionContextInterface, offerId string) (string, error) {
 
 	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return "", fmt.Errorf("could not fetch client identity. %s", err)
 	}
 
-	if clientOrgID == "EmployerMSP" {
+	if clientOrgID == "CompanyMSP" {
 		exists, err := o.OfferExists(ctx, offerId)
 		if err != nil {
 			return "", fmt.Errorf("could not read from world state. %s", err)
@@ -73,18 +69,6 @@ func (o *OfferContract) CreateOfferLetter(ctx contractapi.TransactionContextInte
 		}
 		offer.Ctc = string(ctc)
 
-		fixedComp, exists := transientData["fixedComp"]
-		if !exists {
-			return "", fmt.Errorf("the fixedComp was not specified in transient data. Please try again")
-		}
-		offer.FixedComp = string(fixedComp)
-
-		variableComp, exists := transientData["variableComp"]
-		if !exists {
-			return "", fmt.Errorf("the variableComp was not specified in transient data. Please try again")
-		}
-		offer.VariableComp = string(variableComp)
-
 		dateOfJoining, exists := transientData["dateOfJoining"]
 		if !exists {
 			return "", fmt.Errorf("the dealer was not specified in transient data. Please try again")
@@ -96,18 +80,6 @@ func (o *OfferContract) CreateOfferLetter(ctx contractapi.TransactionContextInte
 			return "", fmt.Errorf("the date of release was not specified in transient data. Please try again")
 		}
 		offer.DateOfRelease = string(dateOfRelease)
-
-		nameOfPerson, exists := transientData["nameOfPerson"]
-		if !exists {
-			return "", fmt.Errorf("the name of person was not specified in transient data. Please try again")
-		}
-		offer.NameOfPerson = string(nameOfPerson)
-
-		contactDetails, exists := transientData["contactDetails"]
-		if !exists {
-			return "", fmt.Errorf("the contactDetails was not specified in transient data. Please try again")
-		}
-		offer.ContactDetails = string(contactDetails)
 
 		companyName, exists := transientData["companyName"]
 		if !exists {
@@ -129,14 +101,13 @@ func (o *OfferContract) CreateOfferLetter(ctx contractapi.TransactionContextInte
 	}
 }
 
-// ReadOffer retrieves an instance of Offer from the private data collection
 func (o *OfferContract) ReadOffer(ctx contractapi.TransactionContextInterface, offerId string) (*Offer, error) {
 	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return nil, fmt.Errorf("could not read the client identity. %s", err)
 	}
 
-	if clientOrgID == "EmployerMSP" || clientOrgID == "StudentMSP" {
+	if clientOrgID == "CompanyMSP" || clientOrgID == "StudentMSP" {
 		exists, err := o.OfferExists(ctx, offerId)
 		if err != nil {
 			return nil, fmt.Errorf("could not read from world state. %s", err)
@@ -162,14 +133,13 @@ func (o *OfferContract) ReadOffer(ctx contractapi.TransactionContextInterface, o
 	return nil, fmt.Errorf("%v not allowed to read.", clientOrgID)
 }
 
-// DeleteOffer deletes an instance of Offer from the private data collection
 func (o *OfferContract) DeleteOffer(ctx contractapi.TransactionContextInterface, offerId string) error {
 	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("could not read the client identity. %s", err)
 	}
 
-	if clientOrgID == "EmployerMSP" {
+	if clientOrgID == "CompanyMSP" {
 
 		exists, err := o.OfferExists(ctx, offerId)
 
@@ -206,8 +176,6 @@ func (o *OfferContract) GetOffersByRange(ctx contractapi.TransactionContextInter
 	return OfferResultIteratorFunction(resultsIterator)
 
 }
-
-// iterator function
 
 func OfferResultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([]*Offer, error) {
 	var offers []*Offer

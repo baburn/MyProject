@@ -53,7 +53,7 @@ export STUDENT_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/student.c
 export COMPANY_PEER_TLSROOTCERT=${PWD}/organizations/peerOrganizations/company.cred.com/peers/peer0.company.cred.com/tls/ca.crt
 sleep 2
 
-echo "—---------------Join Institution peer to the channel—-------------"
+echo "—---------------Join University peer to the channel—-------------"
 
 echo "-----------------------------------------------------------------------------------------------------------------------------------------------------------"
 echo ${FABRIC_CFG_PATH}
@@ -67,7 +67,7 @@ sleep 3
 echo "-----channel List----"
 peer channel list
 
-echo "—-------------Institution anchor peer update—-----------"
+echo "—-------------University anchor peer update—-----------"
 
 peer channel fetch config ${PWD}/channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com -c $CHANNEL_NAME --tls --cafile $ORDERER_CA
 sleep 1
@@ -104,7 +104,7 @@ echo "—---------------package chaincode—-------------"
 peer lifecycle chaincode package credentialcred.tar.gz --path ${PWD}/../chaincode/ --lang golang --label credentialcred_1.0
 sleep 1
 
-echo "—---------------install chaincode in Institution peer—-------------"
+echo "—---------------install chaincode in University peer—-------------"
 
 peer lifecycle chaincode install credentialcred.tar.gz
 sleep 3
@@ -114,7 +114,7 @@ sleep 1
 
 export CC_PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid credentialcred.tar.gz)
 
-echo "—---------------Approve chaincode in Institution peer—-------------"
+echo "—---------------Approve chaincode in University peer—-------------"
 
 peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --channelID $CHANNEL_NAME --name Credential-Verification --version 1.0 --collections-config ../chaincode/collection-config.json --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 sleep 2

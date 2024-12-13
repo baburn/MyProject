@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
@@ -15,14 +16,11 @@ type ResultContract struct {
 
 type Result struct {
 	ResultId      string `json:"resultId"`
-	ResultType    string `json:"resultType"`
 	StudentId     string `json:"studentId"`
-	StudentRollNo string `json:"studentRollNo"`
 	TotalMarks    string `json:"totalMarks"`
 	ObtainedMarks string `json:"obtainedMarks"`
 	Percentage    string `json:"percentage"`
-	Grade         string `json:"grade"`
-	Conclusion    string `json:"conclusion"`
+	Status    string `json:"status"`
 }
 
 type HistoryQueryResult struct {
@@ -38,7 +36,6 @@ type PaginatedQueryResult struct {
 	Bookmark            string    `json:"bookmark"`
 }
 
-// Check result for particular id exists or not
 func (r *ResultContract) ResultExists(ctx contractapi.TransactionContextInterface, resultId string) (bool, error) {
 	data, err := ctx.GetStub().GetState(resultId)
 
@@ -48,53 +45,52 @@ func (r *ResultContract) ResultExists(ctx contractapi.TransactionContextInterfac
 	return data != nil, nil
 }
 
-// Create result for the student
-func (r *ResultContract) CreateResult(ctx contractapi.TransactionContextInterface, resultId string, resultType string, studentId string, studentRollNo string, totalMarks string, obtainedMarks string, percentage string, grade string, conclusion string) (string, error) {
+func (r *ResultContract) CreateResult(ctx contractapi.TransactionContextInterface, resultId string, studentId string, totalMarks string, obtainedMarks string, percentage string, status string) (string, error) {
+	// Input validation
+	if strings.TrimSpace(resultId) == "" || strings.TrimSpace(studentId) == "" {
+		return "", fmt.Errorf("resultId and studentId cannot be empty")
+	}
+
 	clientOrgId, err := ctx.GetClientIdentity().GetMSPID()
-
 	if err != nil {
-		return "", fmt.Errorf("cannot fetch client identity. %s", err)
+		return "", fmt.Errorf("failed to retrieve client identity: %v", err)
 	}
 
-	if clientOrgId == "InstitutionMSP" {
-		exists, err := r.ResultExists(ctx, resultId)
-
-		if err != nil {
-			return "", fmt.Errorf("error: %v", err)
-		}
-
-		if !exists {
-			result := Result{
-				ResultId:      resultId,
-				ResultType:    resultType,
-				StudentId:     studentId,
-				StudentRollNo: studentRollNo,
-				TotalMarks:    totalMarks,
-				ObtainedMarks: obtainedMarks,
-				Percentage:    percentage,
-				Grade:         grade,
-				Conclusion:    conclusion,
-			}
-
-			bytes, _ := json.Marshal(result)
-			fmt.Println(bytes)
-
-			err = ctx.GetStub().PutState(resultId, bytes)
-			if err != nil {
-				return "", fmt.Errorf("could not create result for %s", studentId)
-			}
-
-			return fmt.Sprintf("Successfully created result for student %s and result id %s", studentId, resultId), nil
-		} else {
-			return "", fmt.Errorf("Result with id %v already exists", resultId)
-		}
-
+	if clientOrgId != "UniversityMSP" {
+		return "", fmt.Errorf("unauthorized organization %v cannot create results", clientOrgId)
 	}
 
-	return "", fmt.Errorf("user %v cannot perform action", clientOrgId)
+	exists, err := r.ResultExists(ctx, resultId)
+	if err != nil {
+		return "", fmt.Errorf("error checking result existence: %v", err)
+	}
+
+	if exists {
+		return "", fmt.Errorf("result with ID %s already exists", resultId)
+	}
+
+	result := Result{
+		ResultId:      resultId,
+		StudentId:     studentId,
+		TotalMarks:    totalMarks,
+		ObtainedMarks: obtainedMarks,
+		Percentage:    percentage,
+		Status:    status,
+	}
+
+	bytes, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize result: %v", err)
+	}
+
+	err = ctx.GetStub().PutState(resultId, bytes)
+	if err != nil {
+		return "", fmt.Errorf("could not create result for student %s: %v", studentId, err)
+	}
+
+	return fmt.Sprintf("Successfully created result for student %s with result ID %s", studentId, resultId), nil
 }
 
-// Read result of the student
 func (r *ResultContract) ReadResult(ctx contractapi.TransactionContextInterface, resultId string) (*Result, error) {
 	bytes, err := ctx.GetStub().GetState(resultId)
 
@@ -116,7 +112,6 @@ func (r *ResultContract) ReadResult(ctx contractapi.TransactionContextInterface,
 	return &result, nil
 }
 
-// Delete result from the world state
 func (r *ResultContract) DeleteResult(ctx contractapi.TransactionContextInterface, resultId string) (string, error) {
 	clientOrgId, err := ctx.GetClientIdentity().GetMSPID()
 
@@ -124,7 +119,7 @@ func (r *ResultContract) DeleteResult(ctx contractapi.TransactionContextInterfac
 		return "", fmt.Errorf("could not fetch client identity. %s", err)
 	}
 
-	if clientOrgId == "InstitutionMSP" {
+	if clientOrgId == "UniversityMSP" {
 
 		history, err := r.GetResultHistory(ctx, resultId)
 		if err != nil {
@@ -152,7 +147,6 @@ func (r *ResultContract) DeleteResult(ctx contractapi.TransactionContextInterfac
 	return "", fmt.Errorf("user under following MSPID: %v can't perform this action", clientOrgId)
 }
 
-// get result by range from start to end
 func (r *ResultContract) GetResultsByRange(ctx contractapi.TransactionContextInterface, startKey, endKey string) ([]*Result, error) {
 	resultsIterator, err := ctx.GetStub().GetStateByRange(startKey, endKey)
 	if err != nil {
@@ -163,10 +157,9 @@ func (r *ResultContract) GetResultsByRange(ctx contractapi.TransactionContextInt
 	return resultIteratorFunction(resultsIterator)
 }
 
-// get all results at a time
 func (r *ResultContract) GetAllResults(ctx contractapi.TransactionContextInterface) ([]*Result, error) {
 
-	queryString := `{"selector":{"resultType":"12_MARKSHEET"}, "sort":[{ "percentage": "desc"}]}`
+	queryString := `{"selector":{"status":"Pass"}, "sort":[{ "percentage": "desc"}]}`
 
 	resultsIterator, err := ctx.GetStub().GetQueryResult(queryString)
 	if err != nil {
@@ -176,7 +169,6 @@ func (r *ResultContract) GetAllResults(ctx contractapi.TransactionContextInterfa
 	return resultIteratorFunction(resultsIterator)
 }
 
-// helper function to iterate result
 func resultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([]*Result, error) {
 	var results []*Result
 	for resultsIterator.HasNext() {
@@ -195,7 +187,6 @@ func resultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([
 	return results, nil
 }
 
-// to get history of particular result
 func (r *ResultContract) GetResultHistory(ctx contractapi.TransactionContextInterface, resultId string) ([]*HistoryQueryResult, error) {
 
 	resultsIterator, err := ctx.GetStub().GetHistoryForKey(resultId)
@@ -240,18 +231,18 @@ func (r *ResultContract) GetResultHistory(ctx contractapi.TransactionContextInte
 }
 
 func (r *ResultContract) GetResultsWithPagination(ctx contractapi.TransactionContextInterface, pageSize int32, bookmark string) (*PaginatedQueryResult, error) {
-
-	queryString := `{"selector":{"resultType":"12_MARKSHEET"}`
+	// Fixed query string with proper closing
+	queryString := `{"selector":{"status":"Pass"}}`
 
 	resultsIterator, responseMetadata, err := ctx.GetStub().GetQueryResultWithPagination(queryString, pageSize, bookmark)
 	if err != nil {
-		return nil, fmt.Errorf("could not get the result records. %s", err)
+		return nil, fmt.Errorf("could not retrieve result records: %v", err)
 	}
 	defer resultsIterator.Close()
 
 	results, err := resultIteratorFunction(resultsIterator)
 	if err != nil {
-		return nil, fmt.Errorf("could not return the result records %s", err)
+		return nil, fmt.Errorf("could not process result records: %v", err)
 	}
 
 	return &PaginatedQueryResult{
