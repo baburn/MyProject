@@ -1,8 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 )
@@ -30,11 +31,6 @@ func submitTxnFn(organization string, channelName string, chaincodeName string, 
 		id,
 		client.WithSign(sign),
 		client.WithClientConnection(clientConnection),
-		// Default timeouts for different gRPC calls
-		client.WithEvaluateTimeout(5*time.Second),
-		client.WithEndorseTimeout(15*time.Second),
-		client.WithSubmitTimeout(5*time.Second),
-		client.WithCommitStatusTimeout(1*time.Minute),
 	)
 	if err != nil {
 		panic(err)
@@ -52,6 +48,7 @@ func submitTxnFn(organization string, channelName string, chaincodeName string, 
 		if err != nil {
 			panic(fmt.Errorf("failed to submit transaction: %w", err))
 		}
+
 		return fmt.Sprintf("*** Transaction submitted successfully: %s\n", result)
 
 	case "query":
@@ -60,7 +57,6 @@ func submitTxnFn(organization string, channelName string, chaincodeName string, 
 			panic(fmt.Errorf("failed to evaluate transaction: %w", err))
 		}
 
-		// return fmt.Sprintf("*** Result:%s\n", result)
 		var result string
 		if isByteSliceEmpty(evaluateResult) {
 			result = string(evaluateResult)
@@ -83,7 +79,20 @@ func submitTxnFn(organization string, channelName string, chaincodeName string, 
 		}
 
 		return fmt.Sprintf("*** Transaction committed successfully\n result: %s \n", result)
-
 	}
+
 	return ""
+}
+
+// Format JSON data
+func formatJSON(data []byte) string {
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
+		panic(fmt.Errorf("failed to parse JSON: %w", err))
+	}
+	return prettyJSON.String()
+}
+
+func isByteSliceEmpty(data []byte) bool {
+	return len(data) == 0
 }

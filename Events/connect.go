@@ -1,9 +1,8 @@
+// newGrpcConnection creates a gRPC connection to the Gateway server.
 package main
 
 import (
-	"bytes"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -13,7 +12,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// newGrpcConnection creates a gRPC connection to the Gateway server.
 func newGrpcConnection(tlsCertPath string, gatewayPeer string, peerEndpoint string) *grpc.ClientConn {
 	certificate, err := loadCertificate(tlsCertPath)
 	if err != nil {
@@ -78,17 +76,4 @@ func newSign(keyPath string) identity.Sign {
 	}
 
 	return sign
-}
-
-// Format JSON data
-func formatJSON(data []byte) string {
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
-		panic(fmt.Errorf("failed to parse JSON: %w", err))
-	}
-	return prettyJSON.String()
-}
-
-func isByteSliceEmpty(data []byte) bool {
-	return len(data) == 0
 }

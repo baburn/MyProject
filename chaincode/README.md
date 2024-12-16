@@ -52,4 +52,8 @@ export DATEOFRELEASE=$(echo -n "19/12/2025" | base64 | tr -d \\n)
 
 export COMPANYNAME=$(echo -n "XXX" | base64 | tr -d \\n)
 
+
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.cred.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n Credential-Verification --peerAddresses localhost:7051 --tlsRootCertFiles $UNIVERSITY_PEER_TLSROOTCERT --peerAddresses localhost:9051 --tlsRootCertFiles $STUDENT_PEER_TLSROOTCERT --peerAddresses localhost:11051 --tlsRootCertFiles $COMPANY_PEER_TLSROOTCERT -c '{"Args":["OfferContract:CreateOffer","Offer1"]}' --transient "{\"ctc\":\"$CTC\",\"dateOfJoining\":\"$DATEOFJOINING\",\"dateOfRelease\":\"$DATEOFRELEASE\",\"companyName\":\"$COMPANYNAME\"}"
+
+
+peer chaincode query -C $CHANNEL_NAME -n Credential-Verification --peerAddresses localhost:11051 --tlsRootCertFiles $COMPANY_PEER_TLSROOTCERT -c '{"Args":["OfferContract:ReadOffer","Offer1"]}'
