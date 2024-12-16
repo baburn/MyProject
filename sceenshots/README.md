@@ -1,1 +1,2 @@
 #Screenshot Folder
+![alt text](<Build the infrastructure.png>) ![alt text](<ca admin for each organisation.png>) ![alt text](<Create the application channel.png>) ![alt text](<Generate the genesis block.png>) ![alt text](<Join University peer to the channel.png>) ![alt text](<package-install-approve chaincode.png>) ![alt text](<Postman getResult.png>) ![alt text](<Register and enroll the users for each organization.png>) ![alt text](<Student anchor peer update.png>) ![alt text](<University anchor peer update.png>)
