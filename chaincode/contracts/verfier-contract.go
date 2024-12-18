@@ -3,7 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
-
+	"strconv"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -24,6 +24,14 @@ type Offer struct {
 	Email          string `json:"email"`          // Email of the offer recipient
 	CompanyName    string `json:"companyName"`    // Name of the company making the offer
 }
+
+// StudentResult represents the structure of a student's result
+type StudentResult struct {
+    StudentID string `json:"studentId"` // Student ID
+    Percentage string `json:"percentage"` // Percentage achieved
+    Status     string `json:"status"`     // Status (e.g., "Pass", "Fail")
+}
+
 
 // Collection name for private data storage
 const collectionName string = "Offers"
@@ -226,16 +234,47 @@ func OfferResultIteratorFunction(resultsIterator shim.StateQueryIteratorInterfac
 			return nil, fmt.Errorf("could not fetch the details of result iterator. %s", err)
 		}
 
-		// Deserialize each offer
+		// Deserialize the offer data from query result
 		var offer Offer
 		err = json.Unmarshal(queryResult.Value, &offer)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal the data. %s", err)
 		}
 
-		// Append to results
+		// Append the offer to the list
 		offers = append(offers, &offer)
 	}
 
 	return offers, nil
+}
+
+
+// Corrected VerifyStudentResult function
+func (o *OfferContract) VerifyStudentResult(ctx contractapi.TransactionContextInterface, studentId string) (string, error) {
+    // Query ResultContract to get the student's result
+    response := ctx.GetStub().InvokeChaincode("ResultContract", [][]byte{[]byte("GetStudentResult"), []byte(studentId)}, "mychannel")
+
+    if response.Status != shim.OK {
+        return "", fmt.Errorf("failed to query the ResultContract: %v", response.Message)
+    }
+
+    // Parse the result (assuming the result is returned in JSON format)
+    var studentResult StudentResult
+    err := json.Unmarshal(response.Payload, &studentResult)
+    if err != nil {
+        return "", fmt.Errorf("failed to parse student result: %v", err)
+    }
+
+    // Convert the percentage from string to float64
+    percentage, err := strconv.ParseFloat(studentResult.Percentage, 64)
+    if err != nil {
+        return "", fmt.Errorf("failed to convert percentage to float64: %v", err)
+    }
+
+    // Logic to verify the result (check if percentage >= 60)
+    if percentage >= 60 {
+        return fmt.Sprintf("Student %s is eligible with %.2f%%", studentId, percentage), nil
+    } else {
+        return fmt.Sprintf("Student %s is not eligible, only %.2f%%", studentId, percentage), nil
+    }
 }

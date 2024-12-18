@@ -15,14 +15,11 @@ type ResultContract struct {
 	contractapi.Contract
 }
 
-// Result represents the structure of a student's academic result
-type Result struct {
-	ResultId      string `json:"resultId"`      // Unique identifier for the result
-	StudentId     string `json:"studentId"`     // Identifier for the student
-	TotalMarks    string `json:"totalMarks"`    // Total possible marks
-	ObtainedMarks string `json:"obtainedMarks"` // Marks obtained by the student
-	Percentage    string `json:"percentage"`    // Calculated percentage
-	Status        string `json:"status"`        // Pass/Fail status
+// PaginatedQueryResult supports paginated queries of results
+type PaginatedQueryResult struct {
+	Records             []*Result `json:"records"`               // List of result records
+	FetchedRecordsCount int32     `json:"fetchedRecordsCount"`   // Number of records fetched
+	Bookmark            string    `json:"bookmark"`              // Bookmark for pagination
 }
 
 // HistoryQueryResult contains the result along with its transaction history
@@ -33,17 +30,21 @@ type HistoryQueryResult struct {
 	IsDelete  bool    `json:"isDelete"`  // Indicates if the record was deleted
 }
 
-// PaginatedQueryResult supports paginated queries of results
-type PaginatedQueryResult struct {
-	Records             []*Result `json:"records"`               // List of result records
-	FetchedRecordsCount int32     `json:"fetchedRecordsCount"`   // Number of records fetched
-	Bookmark            string    `json:"bookmark"`              // Bookmark for pagination
+// Result represents the structure of a student's academic result
+type Result struct {
+	AssetType      string `json:"assetType"`      // Asset type ("Result")
+	ResultId       string `json:"resultId"`       // Unique identifier for the result
+	StudentId      string `json:"studentId"`      // Identifier for the student
+	TotalMarks     string `json:"totalMarks"`     // Total possible marks
+	ObtainedMarks  string `json:"obtainedMarks"`  // Marks obtained by the student
+	Percentage     string `json:"percentage"`     // Calculated percentage
+	Status         string `json:"status"`         // Pass/Fail status
 }
 
 // EventData represents metadata for blockchain events
 type EventData struct {
 	Type   string // Type of event
-	Status string // Status of the event
+	Percentage string // Percentage of the event
 }
 
 // ResultExists checks if a result with the given ID already exists in the blockchain
@@ -77,15 +78,15 @@ func (r *ResultContract) CreateResult(ctx contractapi.TransactionContextInterfac
 	// Check if result already exists
 	exists, err := r.ResultExists(ctx, resultId)
 	if err != nil {
-		return "", fmt.Errorf("error checking result existence: %v", err)
+		return "", fmt.Errorf("could not fetch result: %s", err)
 	}
-
 	if exists {
 		return "", fmt.Errorf("result with ID %s already exists", resultId)
 	}
 
-	// Create result object
+	// Create a new Result
 	result := Result{
+		AssetType:     "Result",
 		ResultId:      resultId,
 		StudentId:     studentId,
 		TotalMarks:    totalMarks,
@@ -94,93 +95,77 @@ func (r *ResultContract) CreateResult(ctx contractapi.TransactionContextInterfac
 		Status:        status,
 	}
 
-	// Serialize result to JSON
-	bytes, err := json.Marshal(result)
+	// Store the result in the world state
+	resultBytes, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize result: %v", err)
+		return "", fmt.Errorf("failed to marshal result: %v", err)
 	}
 
-	// Store result in blockchain
-	err = ctx.GetStub().PutState(resultId, bytes)
+	err = ctx.GetStub().PutState(resultId, resultBytes)
 	if err != nil {
-		return "", fmt.Errorf("could not create result for student %s: %v", studentId, err)
-	} else {
-		// Emit blockchain event for result creation
-		addResultEventData := EventData{
-			Type:   "Result creation",
-			Status: status,
-		}
-		eventDataByte, _ := json.Marshal(addResultEventData)
-		ctx.GetStub().SetEvent("CreateResult", eventDataByte)
-
-		return fmt.Sprintf("successfully added result %v", resultId), nil
+		return "", fmt.Errorf("failed to store result in world state: %v", err)
 	}
+
+	// Trigger an event after creating the result
+	eventData := EventData{
+		Type:   "Result creation",
+		Percentage: percentage,
+	}
+	eventBytes, _ := json.Marshal(eventData)
+	ctx.GetStub().SetEvent("CreateResult", eventBytes)
+
+	return fmt.Sprintf("Successfully added result %v", resultId), nil
 }
 
-// ReadResult retrieves a specific result by its ID
+// ReadResult retrieves an instance of Result from the world state
 func (r *ResultContract) ReadResult(ctx contractapi.TransactionContextInterface, resultId string) (*Result, error) {
-	bytes, err := ctx.GetStub().GetState(resultId)
-
+	resultBytes, err := ctx.GetStub().GetState(resultId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
-	if bytes == nil {
-		return nil, fmt.Errorf("the result does not exist for result id %v", resultId)
+	if resultBytes == nil {
+		return nil, fmt.Errorf("the result with ID %s does not exist", resultId)
 	}
 
 	var result Result
-
-	// Deserialize JSON to Result struct
-	err = json.Unmarshal(bytes, &result)
-
+	err = json.Unmarshal(resultBytes, &result)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal world state data to type result")
+		return nil, fmt.Errorf("could not unmarshal result: %v", err)
 	}
 
 	return &result, nil
 }
 
-// DeleteResult removes a result from the blockchain with access control
+// DeleteResult removes the result from the world state
 func (r *ResultContract) DeleteResult(ctx contractapi.TransactionContextInterface, resultId string) (string, error) {
 	// Verify client organization identity
-	clientOrgId, err := ctx.GetClientIdentity().GetMSPID()
-
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
-		return "", fmt.Errorf("could not fetch client identity. %s", err)
+		return "", fmt.Errorf("could not fetch client identity: %s", err)
 	}
 
-	// Restrict deletion to specific organization
-	if clientOrgId == "UniversityMSP" {
-		// Check result history to prevent duplicate deletions
-		history, err := r.GetResultHistory(ctx, resultId)
-		if err != nil {
-			return "", fmt.Errorf("could not fetch history: %v", err)
-		}
-		if len(history) > 0 && history[0].IsDelete {
-			return "", fmt.Errorf("result with id %v has been deleted", resultId)
-		}
-
-		// Verify result exists
-		exists, err := r.ResultExists(ctx, resultId)
-		if err != nil {
-			return "", fmt.Errorf("%s", err)
-		} else if !exists {
-			return "", fmt.Errorf("the result, %s does not exist", resultId)
-		}
-
-		// Delete result from blockchain
-		err = ctx.GetStub().DelState(resultId)
-		if err != nil {
-			return "", err
-		} else {
-			return fmt.Sprintf("result with id %v is deleted from the world state.", resultId), nil
-		}
+	// Allow deletion only for UniversityMSP
+	if clientOrgID != "UniversityMSP" {
+		return "", fmt.Errorf("user under the following MSPID: %v can't perform this action", clientOrgID)
 	}
 
-	return "", fmt.Errorf("user under following MSPID: %v can't perform this action", clientOrgId)
+	// Check if the result exists
+	exists, err := r.ResultExists(ctx, resultId)
+	if err != nil {
+		return "", fmt.Errorf("could not check result existence: %s", err)
+	} else if !exists {
+		return "", fmt.Errorf("the result with ID %s does not exist", resultId)
+	}
+
+	// Delete the result from the ledger
+	err = ctx.GetStub().DelState(resultId)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete result: %v", err)
+	}
+
+	return fmt.Sprintf("Successfully deleted result with ID %s", resultId), nil
 }
 
-// GetResultsByRange retrieves results within a specified key range
 func (r *ResultContract) GetResultsByRange(ctx contractapi.TransactionContextInterface, startKey, endKey string) ([]*Result, error) {
 	resultsIterator, err := ctx.GetStub().GetStateByRange(startKey, endKey)
 	if err != nil {
@@ -190,21 +175,35 @@ func (r *ResultContract) GetResultsByRange(ctx contractapi.TransactionContextInt
 
 	return resultIteratorFunction(resultsIterator)
 }
-
-// GetAllResults retrieves all passing results, sorted by percentage in descending order
+// GetAllResults retrieves all results
 func (r *ResultContract) GetAllResults(ctx contractapi.TransactionContextInterface) ([]*Result, error) {
-	// Query to select only passing results and sort by percentage
-	queryString := `{"selector":{"status":"Pass"}, "sort":[{ "percentage": "desc"}]}`
+	queryString := `{"selector":{"assetType":"Result"}}`
 
 	resultsIterator, err := ctx.GetStub().GetQueryResult(queryString)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch the query result. %s", err)
+		return nil, fmt.Errorf("could not fetch results: %s", err)
 	}
 	defer resultsIterator.Close()
-	return resultIteratorFunction(resultsIterator)
+
+	var results []*Result
+	for resultsIterator.HasNext() {
+		queryResult, err := resultsIterator.Next()
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch result: %s", err)
+		}
+
+		var result Result
+		err = json.Unmarshal(queryResult.Value, &result)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal result: %v", err)
+		}
+
+		results = append(results, &result)
+	}
+
+	return results, nil
 }
 
-// resultIteratorFunction is a helper function to process query iterators and convert results
 func resultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([]*Result, error) {
 	var results []*Result
 	for resultsIterator.HasNext() {
@@ -223,71 +222,209 @@ func resultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([
 	return results, nil
 }
 
-// GetResultHistory retrieves the transaction history for a specific result
+// GetResultHistory retrieves the history of a result
 func (r *ResultContract) GetResultHistory(ctx contractapi.TransactionContextInterface, resultId string) ([]*HistoryQueryResult, error) {
 	resultsIterator, err := ctx.GetStub().GetHistoryForKey(resultId)
 	if err != nil {
-		return nil, fmt.Errorf("could not get the data. %s", err)
+		return nil, fmt.Errorf("could not fetch result history: %v", err)
 	}
 	defer resultsIterator.Close()
 
-	var records []*HistoryQueryResult
+	var history []*HistoryQueryResult
 	for resultsIterator.HasNext() {
 		response, err := resultsIterator.Next()
 		if err != nil {
-			return nil, fmt.Errorf("could not get the value of resultsIterator. %s", err)
+			return nil, fmt.Errorf("could not fetch result history: %v", err)
 		}
 
 		var result Result
 		if len(response.Value) > 0 {
 			err = json.Unmarshal(response.Value, &result)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("could not unmarshal result history: %v", err)
 			}
 		} else {
-			result = Result{
-				ResultId: resultId,
-			}
+			result = Result{ResultId: resultId}
 		}
 
-		// Format timestamp
 		timestamp := response.Timestamp.AsTime()
 		formattedTime := timestamp.Format(time.RFC1123)
 
-		record := HistoryQueryResult{
+		historyRecord := HistoryQueryResult{
 			TxId:      response.TxId,
 			Timestamp: formattedTime,
 			Record:    &result,
 			IsDelete:  response.IsDelete,
 		}
-		records = append(records, &record)
+		history = append(history, &historyRecord)
 	}
 
-	return records, nil
+	return history, nil
 }
 
-// GetResultsWithPagination supports retrieving results with pagination
+// GetResultsWithPagination retrieves results with pagination
 func (r *ResultContract) GetResultsWithPagination(ctx contractapi.TransactionContextInterface, pageSize int32, bookmark string) (*PaginatedQueryResult, error) {
-	// Query to select only passing results
-	queryString := `{"selector":{"status":"Pass"}}`
+	queryString := `{"selector":{"assetType":"Result"}}`
 
-	// Retrieve results with pagination
 	resultsIterator, responseMetadata, err := ctx.GetStub().GetQueryResultWithPagination(queryString, pageSize, bookmark)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve result records: %v", err)
+		return nil, fmt.Errorf("could not fetch results with pagination: %v", err)
 	}
 	defer resultsIterator.Close()
 
-	// Process results
-	results, err := resultIteratorFunction(resultsIterator)
-	if err != nil {
-		return nil, fmt.Errorf("could not process result records: %v", err)
+	var results []*Result
+	for resultsIterator.HasNext() {
+		queryResult, err := resultsIterator.Next()
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch result: %s", err)
+		}
+
+		var result Result
+		err = json.Unmarshal(queryResult.Value, &result)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal result: %v", err)
+		}
+
+		results = append(results, &result)
 	}
 
-	// Return paginated query result
 	return &PaginatedQueryResult{
 		Records:             results,
-		FetchedRecordsCount: responseMetadata.FetchedRecordsCount,
+		FetchedRecordsCount: int32(len(results)),
 		Bookmark:            responseMetadata.Bookmark,
 	}, nil
 }
+
+func (r *ResultContract) GetMatchingResults(ctx contractapi.TransactionContextInterface, resultID string) ([]*Result, error) {
+	// Read the base result
+	baseResult, err := r.ReadResult(ctx, resultID)
+	if err != nil {
+		return nil, fmt.Errorf("error reading result %v", err)
+	}
+
+	// Construct the query string to match the base result fields
+	queryString := fmt.Sprintf(
+		`{"selector":{"assetType":"Result","TotalMarks":"%s", "ObtainedMarks": "%s", "Percentage":"%s", "Status":"%s"}}`,
+		baseResult.TotalMarks, baseResult.ObtainedMarks, baseResult.Percentage, baseResult.Status,
+	)
+
+	// Execute the query in the collection
+	resultsIterator, err := ctx.GetStub().GetPrivateDataQueryResult(collectionName, queryString)
+	if err != nil {
+		return nil, fmt.Errorf("could not get the data: %v", err)
+	}
+	defer resultsIterator.Close()
+
+	// Process the query results
+	return resultIteratorFunction(resultsIterator)
+}
+
+// MatchResult matches result with a matching target result
+func (r *ResultContract) MatchResult(ctx contractapi.TransactionContextInterface, resultID string, targetResultID string) (string, error) {
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return "", fmt.Errorf("could not fetch client identity: %s", err)
+	}
+
+	// Ensure action is restricted to UniversityMSP
+	if clientOrgID != "UniversityMSP" {
+		return "", fmt.Errorf("user under following MSPID: %v can't perform this action", clientOrgID)
+	}
+
+	// Fetch target result from private data
+	bytes, err := ctx.GetStub().GetPrivateData(collectionName, targetResultID)
+	if err != nil {
+		return "", fmt.Errorf("could not fetch private data: %s", err)
+	}
+
+	var targetResult Result
+	err = json.Unmarshal(bytes, &targetResult)
+	if err != nil {
+		return "", fmt.Errorf("could not unmarshal target result data: %s", err)
+	}
+
+	// Read primary result
+	result, err := r.ReadResult(ctx, resultID)
+	if err != nil {
+		return "", fmt.Errorf("could not read result data: %s", err)
+	}
+
+	// Match results based on attributes
+	if result.TotalMarks == targetResult.TotalMarks && result.ObtainedMarks == targetResult.ObtainedMarks && result.Percentage == targetResult.Percentage {
+		result.Status = "Assigned"
+		result.StudentId = targetResult.StudentId
+
+		// Serialize the updated result
+		bytes, _ := json.Marshal(result)
+
+		// Delete the matched target result from private data
+		err = ctx.GetStub().DelPrivateData(collectionName, targetResultID)
+		if err != nil {
+			return "", fmt.Errorf("could not delete target result: %s", err)
+		}
+
+		// Update the result state
+		err = ctx.GetStub().PutState(resultID, bytes)
+		if err != nil {
+			return "", fmt.Errorf("could not update result state: %s", err)
+		}
+
+		return fmt.Sprintf("Deleted target result %v and assigned result %v to student %v", targetResultID, resultID, targetResult.StudentId), nil
+	} else {
+		return "", fmt.Errorf("target result does not match")
+	}
+}
+
+// ConfirmResult confirms the student's result for a company
+func (r *ResultContract) ConfirmResult(ctx contractapi.TransactionContextInterface, resultID string, companyName string) (string, error) {
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return "", fmt.Errorf("could not get the MSPID: %s", err)
+	}
+
+	// Ensure only authorized organizations can perform this action
+	if clientOrgID != "UniversityMSP" {
+		return "", fmt.Errorf("user under following MSPID: %v cannot perform this action", clientOrgID)
+	}
+
+	// Read the result
+	result, err := r.ReadResult(ctx, resultID)
+	if err != nil {
+		return "", fmt.Errorf("could not read the result: %s", err)
+	}
+
+	// Update the result status and add company details
+	result.Status = fmt.Sprintf("Confirmed for %v", companyName)
+
+	bytes, _ := json.Marshal(result)
+
+	// Save the updated result
+	err = ctx.GetStub().PutState(resultID, bytes)
+	if err != nil {
+		return "", fmt.Errorf("could not update result state: %s", err)
+	}
+
+	return fmt.Sprintf("Result %v successfully confirmed for %v", resultID, companyName), nil
+}
+
+// AddStudentResult stores the student's result in the blockchain
+func (r *ResultContract) AddStudentResult(ctx contractapi.TransactionContextInterface, studentId string, percentage string, status string) error {
+    studentResult := Result{
+        StudentId: studentId,
+        Percentage: percentage,
+        Status: status,
+    }
+
+    // Convert the studentResult to JSON
+    studentResultJSON, err := json.Marshal(studentResult)
+    if err != nil {
+        return fmt.Errorf("failed to marshal student result: %v", err)
+    }
+
+    // Store the student result in the ledger
+    return ctx.GetStub().PutState(studentId, studentResultJSON)
+}
+
+
+
+

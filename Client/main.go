@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
-	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,25 +29,24 @@ type Offer struct {
 }
 
 type ResultData struct {
-	AssetType     string `json:"AssetType"`
+	AssetType	  string `json:"AssetType"`
 	ResultId      string `json:"ResultId"`
 	StudentId     string `json:"StudentId"`
-	DateOfResult  string `json:"DateOfResult"`
-	University    string `json:"University"`
+	TotalMarks 	  string `json:"TotalMarks"`
 	ObtainedMarks string `json:"ObtainedMarks"`
 	Percentage    string `json:"Percentage"`
 	Status        string `json:"Status"`
 }
 
 type OfferData struct {
-	OfferId     string `json:"offerId"`
-	StudentId   string `json:"studentId"`
-	AssetType   string `json:"assetType"`
-	Status      string `json:"status"`
-	CompanyName string `json:"companyName"`
-	Ctc         string `json:"ctc"`
-	Name        string `json:"name"`
-	Email       string `json:"email"`
+	OfferId     string `json:"OfferId"`
+	StudentId   string `json:"StudentId"`
+	AssetType   string `json:"AssetType"`
+	Status      string `json:"Status"`
+	CompanyName string `json:"CompanyName"`
+	Ctc         string `json:"Ctc"`
+	Name        string `json:"Name"`
+	Email       string `json:"Email"`
 }
 
 type Match struct {
@@ -76,6 +74,7 @@ func getEvents() []string {
 	return []string{}
 }
 
+
 func main() {
 	router := gin.Default()
 
@@ -91,13 +90,21 @@ func main() {
 
 	// Result-related routes
 	router.GET("/api/results", func(ctx *gin.Context) {
-		result := submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "query", make(map[string][]byte), "GetAllResults")
+		queryParams := make(map[string][]byte)
+		queryParams["AssetType"] = []byte("Result")
+		result := submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "query", queryParams, "GetAllResults")
+
 		var results []ResultData
 		if len(result) > 0 {
 			if err := json.Unmarshal([]byte(result), &results); err != nil {
 				log.Println("Error:", err)
 				ctx.JSON(500, gin.H{"error": "Failed to parse results"})
 				return
+			}
+
+			// Set AssetType to "Result" for each result
+			for i := range results {
+				results[i].AssetType = "Result"
 			}
 		}
 
@@ -120,14 +127,18 @@ func main() {
 
 	router.GET("/api/result/:id", func(ctx *gin.Context) {
 		resultId := ctx.Param("id")
+		if resultId == "" {
+			ctx.JSON(400, gin.H{"error": "ResultId is required"})
+			return
+		}
+
 		result := submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "query", make(map[string][]byte), "ReadResult", resultId)
 
 		var singleResult Result
-
 		if len(result) > 0 {
-			// Unmarshal the JSON array string into the orders slice
 			if err := json.Unmarshal([]byte(result), &singleResult); err != nil {
-				fmt.Println("Error:", err)
+				log.Printf("Error unmarshalling result: %v", err)
+				ctx.JSON(500, gin.H{"error": "Failed to parse result"})
 				return
 			}
 		}
@@ -143,6 +154,9 @@ func main() {
 			return
 		}
 
+		// Set AssetType to "Offer"
+		req.AssetType = "Offer"
+
 		if req.OfferId == "" || req.StudentId == "" {
 			ctx.JSON(400, gin.H{"message": "OfferId and StudentId are required"})
 			return
@@ -155,6 +169,7 @@ func main() {
 			"name":          []byte(req.Name),
 			"email":         []byte(req.Email),
 			"companyName":   []byte(req.CompanyName),
+			"assetType":     []byte(req.AssetType), // Ensure AssetType is included
 		}
 
 		log.Printf("Creating offer with data: %+v", privateData)
@@ -194,6 +209,11 @@ func main() {
 				log.Printf("Error parsing offers: %v", err)
 				ctx.JSON(500, gin.H{"error": "Failed to parse offers"})
 				return
+			}
+
+			// Set AssetType to "Offer" for each offer
+			for i := range offers {
+				offers[i].AssetType = "Offer"
 			}
 		}
 		ctx.JSON(200, offers)
