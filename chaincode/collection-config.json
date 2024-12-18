@@ -3,7 +3,7 @@
       "name": "Offers",
       "policy": "OR('StudentMSP.member', 'CompanyMSP.member')",
       "requiredPeerCount": 1,
-      "maxPeerCount": 1,
+      "maxPeerCount": 2,
       "blockToLive": 100,
       "memberOnlyRead": true
   }

@@ -80,7 +80,7 @@ func (o *OfferContract) CreateOffer(ctx contractapi.TransactionContextInterface,
 
 		dateOfJoining, exists := transientData["dateOfJoining"]
 		if !exists {
-			return "", fmt.Errorf("the dealer was not specified in transient data. Please try again")
+			return "", fmt.Errorf("the date of joining was not specified in transient data. Please try again")
 		}
 		offer.DateOfJoining = string(dateOfJoining)
 
@@ -89,6 +89,18 @@ func (o *OfferContract) CreateOffer(ctx contractapi.TransactionContextInterface,
 			return "", fmt.Errorf("the date of release was not specified in transient data. Please try again")
 		}
 		offer.DateOfRelease = string(dateOfRelease)
+
+		name, exists := transientData["name"]
+		if !exists {
+			return "", fmt.Errorf("the name was not specified in transient data. Please try again")
+		}
+		offer.Name = string(name)
+
+		email, exists := transientData["email"]
+		if !exists {
+			return "", fmt.Errorf("the email was not specified in transient data. Please try again")
+		}
+		offer.Email = string(email)
 
 		companyName, exists := transientData["companyName"]
 		if !exists {
@@ -111,7 +123,6 @@ func (o *OfferContract) CreateOffer(ctx contractapi.TransactionContextInterface,
 		return fmt.Sprintf("offer cannot be created by organisation with MSPID %v ", clientOrgID), nil
 	}
 }
-
 
 // ReadOffer retrieves an offer letter from the private data collection
 func (o *OfferContract) ReadOffer(ctx contractapi.TransactionContextInterface, offerId string) (*Offer, error) {
@@ -178,8 +189,8 @@ func (o *OfferContract) DeleteOffer(ctx contractapi.TransactionContextInterface,
 // GetAllOffers retrieves all offers of a specific asset type
 func (o *OfferContract) GetAllOffers(ctx contractapi.TransactionContextInterface) ([]*Offer, error) {
 	// Query string to select offers by asset type
-	queryString := `{"selector":{"assetType":"Offer"}}`
-	
+	queryString := `{"selector":{"assetType":"OfferLetter"}}`
+
 	// Execute query on private data collection
 	resultsIterator, err := ctx.GetStub().GetPrivateDataQueryResult(collectionName, queryString)
 	if err != nil {
@@ -207,21 +218,21 @@ func (o *OfferContract) GetOffersByRange(ctx contractapi.TransactionContextInter
 // OfferResultIteratorFunction is a helper function to process query iterators and convert results
 func OfferResultIteratorFunction(resultsIterator shim.StateQueryIteratorInterface) ([]*Offer, error) {
 	var offers []*Offer
-	
+
 	// Iterate through query results
 	for resultsIterator.HasNext() {
 		queryResult, err := resultsIterator.Next()
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch the details of result iterator. %s", err)
 		}
-		
+
 		// Deserialize each offer
 		var offer Offer
 		err = json.Unmarshal(queryResult.Value, &offer)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal the data. %s", err)
 		}
-		
+
 		// Append to results
 		offers = append(offers, &offer)
 	}

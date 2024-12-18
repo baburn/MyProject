@@ -2,10 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	
 	"log"
 	"sync"
-    "fmt"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,34 +18,37 @@ type Result struct {
 }
 
 type Offer struct {
-	OfferId        string `json:"offerId"`
-	AssetType      string `json:"assetType"`
-	Ctc            string `json:"ctc"`
-	DateOfJoining  string `json:"dateOfJoining"`
-	DateOfRelease  string `json:"dateOfRelease"`
-	Name           string `json:"name"`
-	Email          string `json:"email"`
-	CompanyName    string `json:"companyName"`
+	OfferId       string `json:"offerId"`
+	StudentId     string `json:"studentId"`
+	AssetType     string `json:"assetType"`
+	Ctc           string `json:"ctc"`
+	DateOfJoining string `json:"dateOfJoining"`
+	DateOfRelease string `json:"dateOfRelease"`
+	Name          string `json:"name"`
+	Email         string `json:"email"`
+	CompanyName   string `json:"companyName"`
 }
 
 type ResultData struct {
-	AssetType      string `json:"AssetType"`
-	ResultId       string `json:"ResultId"`
-	StudentId      string `json:"StudentId"`
-	DateOfResult   string `json:"DateOfResult"`
-	University     string `json:"University"`
+	AssetType     string `json:"AssetType"`
+	ResultId      string `json:"ResultId"`
+	StudentId     string `json:"StudentId"`
+	DateOfResult  string `json:"DateOfResult"`
+	University    string `json:"University"`
 	ObtainedMarks string `json:"ObtainedMarks"`
 	Percentage    string `json:"Percentage"`
 	Status        string `json:"Status"`
 }
 
 type OfferData struct {
-	AssetType    string `json:"assetType"`
-	Status       string `json:"status"`
-	CompanyName  string `json:"CompanyName"`
-	University   string `json:"university"`
-	Ctc          string `json:"ctc"`
-	OfferID      string `json:"offerID"`
+	OfferId     string `json:"offerId"`
+	StudentId   string `json:"studentId"`
+	AssetType   string `json:"assetType"`
+	Status      string `json:"status"`
+	CompanyName string `json:"companyName"`
+	Ctc         string `json:"ctc"`
+	Name        string `json:"name"`
+	Email       string `json:"email"`
 }
 
 type Match struct {
@@ -59,12 +61,6 @@ type ResultHistory struct {
 	TxId      string      `json:"txId"`
 	Timestamp string      `json:"timestamp"`
 	IsDelete  bool        `json:"isDelete"`
-}
-
-type Register struct {
-	ResultId    string `json:"resultId"`
-	StudentName string `json:"studentName"`
-	VerNumber   string `json:"verNumber"`
 }
 
 // Placeholder for ChaincodeEventListener function
@@ -88,16 +84,14 @@ func main() {
 	go ChaincodeEventListener("university", "mychannel", "Credential-Verification", &wg)
 
 	router.GET("/", func(ctx *gin.Context) {
-
 		ctx.JSON(200, gin.H{
-			"message":"Welcome to project",
+			"message": "Welcome to project",
 		})
 	})
 
 	// Result-related routes
 	router.GET("/api/results", func(ctx *gin.Context) {
 		result := submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "query", make(map[string][]byte), "GetAllResults")
-
 		var results []ResultData
 		if len(result) > 0 {
 			if err := json.Unmarshal([]byte(result), &results); err != nil {
@@ -118,10 +112,10 @@ func main() {
 		}
 
 		log.Printf("Result received: %+v", req)
-		res:= submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "invoke", make(map[string][]byte), "CreateResult", 
-			req.ResultId, req.StudentId, req.TotalMarks , req.ObtainedMarks, req.Percentage, req.Status)
+		res := submitTxnFn("university", "mychannel", "Credential-Verification", "ResultContract", "invoke", make(map[string][]byte), "CreateResult",
+			req.ResultId, req.StudentId, req.TotalMarks, req.ObtainedMarks, req.Percentage, req.Status)
 
-		ctx.JSON(200,res )
+		ctx.JSON(200, res)
 	})
 
 	router.GET("/api/result/:id", func(ctx *gin.Context) {
@@ -142,39 +136,67 @@ func main() {
 	})
 
 	// Offer-related routes
-	router.GET("/api/offers", func(ctx *gin.Context) {
-		result := submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "query", make(map[string][]byte), "GetAllOffers")
-
-		var offers []OfferData
-		if len(result) > 0 {
-			if err := json.Unmarshal([]byte(result), &offers); err != nil {
-				log.Println("Error:", err)
-				ctx.JSON(500, gin.H{"error": "Failed to parse offers"})
-				return
-			}
-		}
-
-		ctx.JSON(200, offers)
-	})
-
 	router.POST("/api/offer", func(ctx *gin.Context) {
 		var req Offer
-		if err := ctx.BindJSON(&req); err != nil {
-			ctx.JSON(400, gin.H{"message": "Bad request"})
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.JSON(400, gin.H{"message": "Invalid request format"})
 			return
 		}
 
-		log.Printf("Offer received: %+v", req)
-		submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "invoke", make(map[string][]byte), "CreateOffer", req.OfferId)
+		if req.OfferId == "" || req.StudentId == "" {
+			ctx.JSON(400, gin.H{"message": "OfferId and StudentId are required"})
+			return
+		}
 
-		ctx.JSON(200, req)
+		privateData := map[string][]byte{
+			"ctc":           []byte(req.Ctc),
+			"dateOfJoining": []byte(req.DateOfJoining),
+			"dateOfRelease": []byte(req.DateOfRelease),
+			"name":          []byte(req.Name),
+			"email":         []byte(req.Email),
+			"companyName":   []byte(req.CompanyName),
+		}
+
+		log.Printf("Creating offer with data: %+v", privateData)
+		res := submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "private", privateData, "CreateOffer", req.OfferId, req.StudentId)
+		ctx.JSON(200, gin.H{"response": res})
 	})
 
 	router.GET("/api/offer/:id", func(ctx *gin.Context) {
 		offerId := ctx.Param("id")
-		result := submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "query", make(map[string][]byte), "ReadOffer", offerId)
+		result := submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "query", nil, "ReadOffer", offerId)
 
-		ctx.JSON(200, gin.H{"data": result})
+		var offer Offer
+		if len(result) > 0 {
+			if err := json.Unmarshal([]byte(result), &offer); err != nil {
+				log.Printf("Error unmarshalling offer: %v", err)
+				ctx.JSON(500, gin.H{"error": "Failed to parse offer"})
+				return
+			}
+		}
+
+		// New check: Ensure the student can only see their own offer
+		studentId := ctx.DefaultQuery("studentId", "") // Assuming student ID is passed as a query parameter
+		if studentId != offer.StudentId {
+			ctx.JSON(403, gin.H{"error": "You are not authorized to view this offer"})
+			return
+		}
+
+		ctx.JSON(200, gin.H{"offer": offer})
+	})
+
+	router.GET("/api/offers", func(ctx *gin.Context) {
+		result := submitTxnFn("company", "mychannel", "Credential-Verification", "OfferContract", "query", nil, "GetAllOffers")
+
+		var offers []OfferData
+		if len(result) > 0 {
+			if err := json.Unmarshal([]byte(result), &offers); err != nil {
+				log.Printf("Error parsing offers: %v", err)
+				ctx.JSON(500, gin.H{"error": "Failed to parse offers"})
+				return
+			}
+		}
+		ctx.JSON(200, offers)
 	})
 
 	// Matching and Events
